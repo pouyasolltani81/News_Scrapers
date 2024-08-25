@@ -61,7 +61,7 @@ class AmbcryptoScrapper(Scraper):
             news['thImage'] = soup_d.find('img')['src']
 
             categories = [category.text for category in item.findall('category')]
-            news['category'] = categories
+            news['category'] = categories[0]
             news['keywords'] = categories
 
 
@@ -106,7 +106,7 @@ class AmbcryptoScrapper(Scraper):
 
 
             category = newsItem.get('category', '')
-            item['keywords'] = [category.lower()]
+            item['keywords'] = [char.lower() for char in keywords]
 
 
             item['link'] = newsItem.get('link', '')
