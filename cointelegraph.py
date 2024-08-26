@@ -32,9 +32,9 @@ class cointelegraphScraper(Scraper):
                 if summery:
                     news['summery'] = summery["content"]
     
-                # pub_date = article.find('time')
-                # if pub_date:
-                #     news['pubDate'] = datetime_str = soup.find('time')['datetime']
+                pub_date = article.find('time')
+                if pub_date:
+                    news['pubDate'] = pub_date['datetime']
                 description = article.find('div', class_='post-content')
                 if description:
                    
@@ -81,12 +81,12 @@ class cointelegraphScraper(Scraper):
             item['articleBody'] = newsItem.get('description', '')
           
             
-            # pubDate = newsItem.get('pubDate')
-            # if pubDate:
-            #     currentDate = datetime.strptime(pubDate, '%Y-%m-%dT%H:%M:%S%z')  
-            #     item['pubDate'] = int(currentDate.timestamp())
-            # else:
-            #     item['pubDate'] = int(datetime.now().timestamp())
+            pubDate = newsItem.get('pubDate')
+            if pubDate:
+                currentDate = datetime.strptime(pubDate, '%Y-%m-%dT%H:%M:%S%z')  
+                item['pubDate'] = int(currentDate.timestamp())
+            else:
+                item['pubDate'] = int(datetime.now().timestamp())
             
             
             category = newsItem.get('category', '')
