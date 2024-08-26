@@ -38,7 +38,7 @@ class FinboldScraper(Scraper):
     
                 pub_date = article.find('time')
                 if pub_date:
-                    news['pubDate'] = datetime_str = article.find('time')['datetime']
+                    news['pubDate'] = pub_date['datetime']
                 
                 
                 news['link'] = article_url
