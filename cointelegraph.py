@@ -2,61 +2,68 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime , timedelta
 
-class FinboldScraper(Scraper):
+class cointelegraphScraper(Scraper):
 
-    def __init__(self, page = '1' ,back_to_back = False):
-        self.url = 'https://finbold.com/category/cryptocurrency-news/'  
-        self.page = page
-        self.name = 'finbold'
-        back_to_back = back_to_back
+    def __init__(self):
+        self.url = 'https://cointelegraph.com/'  
+        self.name = 'cointelegraph'
 
     def getnews(self):
         newsItem = []
         self.soup = BeautifulSoup(self.soup, 'html.parser')
         if self.soup:
             
-            articles = self.soup.find_all("div", class_="py-5")
-
+            articles = self.soup.find_all("article", class_="post-card__article rounded-lg")
+            print(f'number  of articles found : {len(articles)}')
             for article in articles:
                 link = article.find("a")["href"]
                 article_url = link if link.startswith("http") else self.ProviderUrl + link
                 article = self.loadPage(article_url)
-                article = BeautifulSoup(response.content, "html.parser")
+                article = BeautifulSoup(article, "html.parser")
                 
                 news = {}
                 
-                title = article.find('h1', class_ = 'entry-title')
+                title = article.title.string
                 if title:
                     news['title'] = title.text.strip()
                 
-                description = article.find('article', class_='status-publish')
+
+                summery = article.find("meta", attrs={"name": "description"})
+                if summery:
+                    news['summery'] = summery["content"]
+    
+                # pub_date = article.find('time')
+                # if pub_date:
+                #     news['pubDate'] = datetime_str = soup.find('time')['datetime']
+                description = article.find('div', class_='post-content')
                 if description:
                    
-                    description_paragraphs = description.find_all(['p', 'h2'])
+                    description_paragraphs = description.find_all(['p', 'h2']  , recursive=False)
                     description_text = ''.join([para.text for para in description_paragraphs])
                     news['description'] = description_text
-    
-                pub_date = article.find('time')
-                if pub_date:
-                    news['pubDate'] = datetime_str = article.find('time')['datetime']
-                
                 
                 news['link'] = article_url
                 
                 
-                category = article.find('a', class_='block text-blue-500 text-xs font-extrabold uppercase')
-                if category:
-                    news['category'] = category.text.strip()
+                category_ul = article.find('ul', class_='tags-list__list')
 
-                img_thum_div = article.find("div", class_="main-image")
-                img_thum = img_thum_div.find("img")["src"] if img_thum_div else None
+                
+                tags_items = category_ul.find_all('li', class_='tags-list__item')
+
+                
+                news['category'] = [item.get_text(strip=True) for item in tags_items]
+              
+               
+
+                img_thum_div = article.find("div", class_="post-cover__image")
+                img_thum = img_thum_div.find("img" , )["src"] if img_thum_div else None
                
                 if img_thum:
                     news['thImage'] = img_thum
 
-                news['imgs'] = [img["src"] for img in description.find_all("img")]
+                news['imgs'] = [img["src"] for img in description.find_all("img", attrs={"pinger-seen": "true"}, recursive=False)]
 
-                creator = article.find('span', class_='author')
+                creator = article.find('div', class_='post-meta__author-name')
                 if creator:
                     news['creator'] = creator.text.strip()
 
@@ -72,14 +79,14 @@ class FinboldScraper(Scraper):
             item['title'] = newsItem.get('title', '')
             
             item['articleBody'] = newsItem.get('description', '')
+          
             
-            
-            pubDate = newsItem.get('pubDate')
-            if pubDate:
-                currentDate = datetime.strptime(pubDate, '%Y-%m-%dT%H:%M:%S%z')  
-                item['pubDate'] = int(currentDate.timestamp())
-            else:
-                item['pubDate'] = int(datetime.now().timestamp())
+            # pubDate = newsItem.get('pubDate')
+            # if pubDate:
+            #     currentDate = datetime.strptime(pubDate, '%Y-%m-%dT%H:%M:%S%z')  
+            #     item['pubDate'] = int(currentDate.timestamp())
+            # else:
+            #     item['pubDate'] = int(datetime.now().timestamp())
             
             
             category = newsItem.get('category', '')
@@ -89,10 +96,10 @@ class FinboldScraper(Scraper):
             item['link'] = newsItem.get('link', '')
             
             
-            item['provider'] = 'finbold'  
+            item['provider'] = 'cointelegraph'  
             
             
-            item['summary'] = ''
+            item['summary'] = newsItem.get('summery', '')
             
             
             item['thImage'] = newsItem.get('thImage', ' ')
@@ -112,7 +119,8 @@ class FinboldScraper(Scraper):
             creator = newsItem.get('creator')
             if not creator:
                 item['author'] = item['provider']
-           
+            else:
+                item['author'] = unescape(creator).strip().lower()
             
            
             item['scraped_date'] = int(datetime.now().timestamp())
@@ -142,21 +150,7 @@ class FinboldScraper(Scraper):
     def start_scraping(self):
 
         try:
-            if self.back_to_back == True :
-                for page in range(1,self.page):
-                  
-                    page = f'page/{str(page)}/'
-                    self.soup = self.loadPage(self.url)
-                    now = datetime.now()
-                    logger.info(f'Crawling of {self.name} Started at ' + now.strftime('%a, %d %b %Y %H:%M:%S Z') + '!!')
-                    logger.info('+---------------------------------------------+')
-                    if self.soup:
-                        newsItems = self.getnews()
-                        self.savegroupNews(newsItems)
-
-            else:
-
-                    page = f'page/{str(page)}/'
+            
                     self.soup = self.loadPage(self.url)
                     now = datetime.now()
                     logger.info(f'Crawling of {self.name} Started at ' + now.strftime('%a, %d %b %Y %H:%M:%S Z') + '!!')
