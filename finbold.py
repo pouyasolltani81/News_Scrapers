@@ -20,7 +20,7 @@ class FinboldScraper(Scraper):
 
             for article in articles:
                 link = article.find("a")["href"]
-                article_url = link if link.startswith("http") else self.ProviderUrl + link
+                article_url = link if link.startswith("http") else self.url + link
                 article = self.loadPage(article_url)
                 article = BeautifulSoup(response.content, "html.parser")
                 

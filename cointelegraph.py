@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime , timedelta
+from html import unescape
 
 class cointelegraphScraper(Scraper):
 
@@ -17,7 +18,7 @@ class cointelegraphScraper(Scraper):
             print(f'number  of articles found : {len(articles)}')
             for article in articles:
                 link = article.find("a")["href"]
-                article_url = link if link.startswith("http") else self.ProviderUrl + link
+                article_url = link if link.startswith("http") else self.url + link
                 article = self.loadPage(article_url)
                 article = BeautifulSoup(article, "html.parser")
                 
@@ -76,9 +77,9 @@ class cointelegraphScraper(Scraper):
             item = {}
             
             
-            item['title'] = newsItem.get('title', '')
+            item['title'] = unescape(newsItem.get('title', ''))
             
-            item['articleBody'] = newsItem.get('description', '')
+            item['articleBody'] = unescape(newsItem.get('description', ''))
           
             
             pubDate = newsItem.get('pubDate')
@@ -99,7 +100,7 @@ class cointelegraphScraper(Scraper):
             item['provider'] = 'cointelegraph'  
             
             
-            item['summary'] = newsItem.get('summery', '')
+            item['summary'] = unscape(newsItem.get('summery', ''))
             
             
             item['thImage'] = newsItem.get('thImage', ' ')
