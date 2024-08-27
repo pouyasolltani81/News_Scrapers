@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime , timedelta
+from html import unescape
 
 class FinboldScraper(Scraper):
 
@@ -69,9 +70,9 @@ class FinboldScraper(Scraper):
             item = {}
             
             
-            item['title'] = newsItem.get('title', '')
+            item['title'] = unescape(newsItem.get('title', ''))
             
-            item['articleBody'] = newsItem.get('description', '')
+            item['articleBody'] = unescape(newsItem.get('description', ''))
             
             
             pubDate = newsItem.get('pubDate')

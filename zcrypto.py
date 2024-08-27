@@ -2,6 +2,7 @@ import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from datetime import datetime , timedelta
+from html import unescape
 
 class ZycryptoScrapper(scraper):
     def __init__(self, mongo_uri, db_name, collection_name, base_url ='https://zycrypto.com/' , rss_url = "https://zycrypto.com/feed/"):
@@ -88,9 +89,9 @@ class ZycryptoScrapper(scraper):
             item = {}
 
 
-            item['title'] = newsItem.get('title', '')
+            item['title'] = unescape(newsItem.get('title', ''))
 
-            item['articleBody'] = newsItem.get('content', '')
+            item['articleBody'] = unescape(newsItem.get('content', ''))
 
 
             item['pubDate']  = newsItem.get('timestamp')
@@ -106,7 +107,7 @@ class ZycryptoScrapper(scraper):
             item['provider'] = 'zycrypto'
 
 
-            item['summary'] = newsItem.get('summery', '')
+            item['summary'] = unescape(newsItem.get('summery', ''))
 
 
             item['thImage'] = newsItem.get('thImage', ' ')
