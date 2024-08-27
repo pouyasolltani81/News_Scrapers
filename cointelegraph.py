@@ -14,7 +14,7 @@ class cointelegraphScraper(Scraper):
         self.soup = BeautifulSoup(self.soup, 'html.parser')
         if self.soup:
             
-            articles = self.soup.find_all("article", class_="post-card__article rounded-lg")
+            articles = self.soup.find_all("article", class_="post-card__article")
             print(f'number  of articles found : {len(articles)}')
             for article in articles:
                 link = article.find("a")["href"]
