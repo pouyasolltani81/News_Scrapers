@@ -77,7 +77,7 @@ class CoinTelegraphScraper:
                 img_thum_div = article.find("div", class_="post-cover__image")
                 news['thImage'] = img_thum_div.find("img")["src"] if img_thum_div else None
 
-                news['imgs'] = [img["src"] for img in description.find_all("img", attrs={"pinger-seen": "true"}, recursive=False)] if description else []
+                news['imgs'] = [img["src"] for img in description.find_all("img", attrs={"pinger-seen": "true"})] if description else []
 
                 creator = article.find('div', class_='post-meta__author-name')
                 news['creator'] = creator.text.strip().lower() if creator else 'No Author'

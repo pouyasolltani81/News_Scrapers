@@ -81,7 +81,7 @@ class cointelegraphScraper:
             if img_thum:
                 news['thImage'] = img_thum
 
-            news['imgs'] = [img["src"] for img in description.find_all("img", attrs={"pinger-seen": "true"}, recursive=False)]
+            news['imgs'] = [img["src"] for img in description.find_all("img", attrs={"pinger-seen": "true"})]
 
             creator = article.find('div', class_='post-meta__author-name')
             if creator:
