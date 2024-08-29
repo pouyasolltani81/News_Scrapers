@@ -173,11 +173,11 @@ class CoinTelegraphScraper:
 #         collection_name="cointelegraph"
 #     )
 
-#     while True:
-#         i = 0 
-#         scraper.start_scraping()
-#         time.sleep(1800)  
-#         print(f'It has been {i} Times and it has been running {i/2} hours')
-#         i += 1
-#         if i == 10 :
-#             break
+    # while True:
+    #     i = 0 
+    #     scraper.start_scraping()
+    #     i += 1
+    #     print(f'It has been {i} Times and it has been running {i/2} hours')
+    #     time.sleep(1800)  
+    #     if i == 10 :
+    #         break
