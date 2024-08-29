@@ -166,6 +166,7 @@ class CoinTelegraphScraper:
             logger.error(f"Error during scraping: {e}")
 #             print(f"Error during scraping: {e}")
 
+# i = 0 
 # if __name__ == "__main__":
 #     scraper = CoinTelegraphScraper(
 #         mongo_uri="mongodb+srv://pouya:p44751sm@cluster0.hoskl3b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
@@ -174,7 +175,7 @@ class CoinTelegraphScraper:
 #     )
 
     # while True:
-    #     i = 0 
+    #     
     #     scraper.start_scraping()
     #     i += 1
     #     print(f'It has been {i} Times and it has been running {i/2} hours')
