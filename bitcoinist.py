@@ -1,176 +1,167 @@
 import requests
 import xml.etree.ElementTree as ET
-from datetime import datetime
 from bs4 import BeautifulSoup
+from datetime import datetime
+import logging
+from pymongo import MongoClient
+from html import unescape
 
 
-class BitcoinistScrapper(Scraper):
+logger = logging.getLogger('BitcoinistScraperLog')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('bitcoinist_scraper.log')
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-    def __init__(self):
-        super().__init__('https://bitcoinist.com/')
-        self.rss_url = "https://bitcoinist.com/feed/"
-        self.unwanted_text = ()
-        self.website_name = 'bitcoinist'
+
+class BitcoinistScraper:
+    def __init__(self, mongo_uri, db_name, collection_name, base_url='https://bitcoinist.com', rss_url="https://bitcoinist.com/feed/"):
+        self.mongo_uri = mongo_uri
+        self.db_name = db_name
+        self.collection_name = collection_name
+        self.base_url = base_url
+        self.rss_url = rss_url
+
+       
+        self.client = MongoClient(self.mongo_uri)
+        self.db = self.client[self.db_name]
+        self.collection = self.db[self.collection_name]
+
+       
 
     def clean_content(self, content):
-      if self.unwanted_text in content:
-          content = content.replace(self.unwanted_text, "").strip()
-      return content
-
-
-
-    def fetch_rss(self):
         try:
-            response = requests.get(self.rss_url)
-            response.raise_for_status()
-            return response.content
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching RSS feed: {e}")
-            return None
+            for text in self.unwanted_text:
+                content = content.replace(text, "").strip()
+            return content
+        except Exception as err:
+            logger.error(f"Error cleaning content: {err}")
+#             print(f"Error cleaning content: {err}")
+            raise
+
+    def loadPage(self,url):
+    
+        try:
+           
+            headers = {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'}
+            resp = requests.get(url, timeout=3, headers=headers)
+            if resp.status_code == 200:
+
+                self.xmlData = resp.content
+                return self.xmlData
+            else:
+                return -1
+
+        except requests.exceptions.HTTPError as htError:
+            logger.error('Http Error: %s', str(htError))
+            raise errors.DataProvidingException(''.format('  {message}' ,message=str(htError)))
+
+        except requests.exceptions.ConnectionError as coError:
+            logger.error('Connection Error: %s',str( coError))
+            raise errors.DataProvidingException(str(coError))
+
+        except requests.exceptions.Timeout as timeOutError:
+            logger.error('TimeOut Error: %s', str(timeOutError))
+            raise errors.DataProvidingException (str(timeOutError))
+
+        except requests.exceptions.RequestException as ReError:
+            logger.error('Something was wrong: %s', str(ReError))
+            raise errors.DataProvidingException(str(ReError))
 
 
     def parse_rss(self, rss_content):
-        news_items = []
-        root = ET.fromstring(rss_content)
-
-        for item in root.findall(".//item"):
-            news = {}
-            news['title'] = item.find('title').text
-            news['link'] = item.find('link').text
-            news['pubDate'] = item.find('pubDate').text
-
-
-            pub_date = datetime.strptime(news['pubDate'], "%a, %d %b %Y %H:%M:%S %z")
-            news['timestamp'] = int(pub_date.timestamp())
-
-
-            description_html = item.find('description').text
-            soup_d = BeautifulSoup(description_html, 'html.parser')
-
-
-
-            content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded').text
-            soup_c = BeautifulSoup(content_encoded, 'html.parser')
-
-
-            description_text = ' '.join(p.get_text() for p in soup_d.find_all(['p', 'h2']))
-            content_text = ' '.join(p.get_text() for p in soup_c.find_all(['p', 'h2'])[:-3])
-            content_text = self.clean_content(content_text)
-            news['summery'] = description_text.strip()
-            news['content'] =  content_text.strip()
-
-
-            images = [img['src'] for img in soup_c.find_all('img') if 'src' in img.attrs]
-            news['images'] = images
-
-
-            news['thImage'] = item.find('enclosure')['url'] if item.find('enclosure') else (images[0] if images else '')
-
-
-            categories = [category.text for category in item.findall('category')]
-            news['category'] = categories
-            news['keywords'] = categories
-
-
-            author_encoded = item.find('{http://purl.org/dc/elements/1.1/}creator').text
-            soup_a = BeautifulSoup( author_encoded, 'html.parser')
-
-            author = soup_a.get_text()
-            news['author'] = author.strip()
-
-
-            news_items.append(news)
-
-        return news_items
-
-    def JsonItemStandard(self, newsItem):
         try:
-            item = {}
+            root = ET.fromstring(rss_content)
+            news_items = []
 
+            for item in root.findall(".//item"):
+                news = {}
+                news['title'] = item.find('title').text
+                news['link'] = item.find('link').text
+                pub_date = item.find('pubDate').text
+                news['pubDate'] = datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %z")
+                news['timestamp'] = int(news['pubDate'].timestamp())
 
-            item['title'] = unescape(newsItem.get('title', ''))
+                description_html = item.find('description').text
+                soup_d = BeautifulSoup(description_html, 'html.parser')
+                content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded').text
+                soup_c = BeautifulSoup(content_encoded, 'html.parser')
 
-            item['articleBody'] = unescape(newsItem.get('content', ''))
+                news['summary'] = soup_d.get_text().strip()
+                news['content'] = ' '.join(p.get_text() for p in soup_c.find_all(['p', 'h2']))
+                news['images'] = [img['src'] for img in soup_c.find_all('img') if 'src' in img.attrs]
+                news['thImage'] = item.find('enclosure')['url'] if item.find('enclosure') else (news['images'][0] if news['images'] else '')
+                news['category'] = [category.text.lower() for category in item.findall('category')]
+                news['keywords'] = news['category']
+                author_encoded = item.find('{http://purl.org/dc/elements/1.1/}creator').text
+                news['author'] = BeautifulSoup(author_encoded, 'html.parser').get_text().strip().lower()
 
+                news_items.append(news)
+            return news_items
+        except ET.ParseError as err:
+            logger.error(f"Error parsing RSS feed: {err}")
+#             print(f"Error parsing RSS feed: {err}")
+            raise
+        except Exception as err:
+            logger.error(f"General error in parsing RSS: {err}")
+#             print(f"General error in parsing RSS: {err}")
+            raise
 
-            item['pubDate']  = newsItem.get('timestamp')
-
-
-            category = newsItem.get('category', '')
-            item['keywords'] = [category.lower()]
-
-
-            item['link'] = newsItem.get('link', '')
-
-
-            item['provider'] = 'bitcoinist'
-
-
-            item['summary'] = newsItem.get('summery', '')
-
-
-            item['thImage'] = newsItem.get('thImage', ' ')
-
-
-            item['images'] = newsItem.get('images', ' ')
-
-
-            item['category'] =  newsItem.get('category', '')
-
-
-            item['Negative'] = 0
-            item['Neutral'] = 0
-            item['Positive'] = 0
-
-
-            creator = newsItem.get('author')
-            if not creator:
-                item['author'] = item['provider']
-            else:
-                item['author'] = unescape(creator).strip().lower()
-
-
-            item['scraped_date'] = int(datetime.now().timestamp())
-
+    def JsonItemStandard(self, news_item):
+        try:
+            item = {
+                'title': unescape(news_item['title']),
+                'articleBody': unescape(news_item['content']),
+                'pubDate': news_item['timestamp'],
+                'keywords': news_item['keywords'],
+                'link': news_item['link'],
+                'provider': 'bitcoinist',
+                'summary': news_item['summary'],
+                'thImage': news_item['thImage'] if 'thImage' in news_item else ' ',
+                'images': news_item['images'],
+                'category': 'cryptocurrency',
+                'Negative': 0,
+                'Neutral': 0,
+                'Positive': 0,
+                'author': news_item['author'] if news_item['author'] else 'bitcoinist'
+            }
             return item
-        except errors.DataProvidingException as err:
-            logger.error(f'{str(err)} from {self.website_name}')
-            raise errors.DataProvidingException(f'{str(err)} from {self.website_name}')
         except Exception as err:
-            logger.error(f'{str(err)} from {self.website_name}')
-            raise errors.DataProvidingException(f'{str(err)} from {self.website_name}')
+            logger.error(f"Error standardizing item: {err}")
+#             print(f"Error standardizing item: {err}")
+            raise
 
-    def savegroupNews(self, newsItems):
+    def savegroupNews(self, news_items):
         try:
-            for item in newsItems:
-
-                item = self.JsonItemStandard(item)
-                self.saveInMongo(item)
-        except requests.exceptions.ConnectionError as err:
-            logger.error(f'{str(err)} from {self.website_name}')
-            raise errors.DataProvidingException(f'{str(err)} from {self.website_name}')
+            for news_item in news_items:
+                standardized_item = self.JsonItemStandard(news_item)
+                self.collection.insert_one(standardized_item)
+                logger.info(f"Saved to MongoDB: {standardized_item['title']}")
+#                 print(f"Saved to MongoDB: {standardized_item['title']}")
         except Exception as err:
-            logger.error(f'{str(err)} from {self.website_name}')
-            raise errors.DataProvidingException(f'{str(err)} from {self.website_name}')
-
+            logger.error(f"Error saving news items: {err}")
+#             print(f"Error saving news items: {err}")
+            raise
 
     def start_scraping(self):
-
         try:
-          rss_content = self.fetch_rss()
-          if rss_content:
-            news_items = self.parse_rss(rss_content)
-            print(f'number of news fetched : {len(news_items)}')
-            now = datetime.now()
-            logger.info(f'Crawling of {self.website_name} Started at ' + now.strftime('%a, %d %b %Y %H:%M:%S Z') + '!!')
-            logger.info('+---------------------------------------------+')
-            self.savegroupNews(news_items)
-
-
-        except errors.DataProvidingException as err:
-            logger.error(f'{str(err)} from {self.website_name}')
+            rss_content = self.loadPage(self.rss_url)
+            if rss_content:
+                news_items = self.parse_rss(rss_content)
+                self.savegroupNews(news_items)
         except Exception as err:
-            logger.error(f'{str(err)} from {self.website_name}')
+            logger.error(f"General error during scraping: {err}")
+#             print(f"General error during scraping: {err}")
+            raise
 
 
-
+# # Instantiate and run the scraper
+# scraper = BitcoinistScraper(
+#     mongo_uri="mongodb+srv://pouya:p44751sm@cluster0.hoskl3b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+#     db_name="crypto_news",
+#     collection_name="bitcoinist"
+# )
+# scraper.start_scraping()

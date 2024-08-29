@@ -58,7 +58,7 @@ class CoinTelegraphScraper:
                 return json_data
         except Exception as e:
             logger.error(f"Error parsing JSON-LD data: {e}")
-#             print(f"Error parsing JSON-LD data: {e}")
+            # print(f"Error parsing JSON-LD data: {e}")
         return None
 
     def get_article_body(self, article_url):
@@ -86,7 +86,7 @@ class CoinTelegraphScraper:
                 if body_contant:
                     body_contant_paragraphs = body_contant.find_all(['p', 'h2'], recursive=False)
                     body_contant_text = '\n'.join([para.text for para in body_contant_paragraphs])
-#                     print(body_contant_text[:100])
+#                     # print(body_contant_text[:100])
                     news['body_contant'] = body_contant_text
                     news['imgs'] = [img["src"] for img in body_contant.find_all("img", attrs={"pinger-seen": "true"})]
                     
@@ -94,16 +94,30 @@ class CoinTelegraphScraper:
                 if category_ul:
                     tags_items = category_ul.find_all('li', class_='tags-list__item')
                     news['category'] = [item.get_text(strip=True) for item in tags_items]
+                    
+                # Find the span that contains the text "Total views" and get the previous sibling's text for the count
+                views_span = article.find('span', string=' Total views ')
+                total_views = views_span.find_previous_sibling('span').text.strip() if views_span else None
+
+                # Find the span that contains the text "Total shares" and get the previous sibling's text for the count
+                shares_span = article.find('span', string=' Total shares ')
+                total_shares = shares_span.find_previous_sibling('span').text.strip() if shares_span else None
+
+                # Output the results
+                news['Total_Views'] = total_views
+                news['Total_Shares']= total_shares
+
+
 
             else:
                 logger.info(f"No JSON-LD data found for {article_url}")
-#                 print(f"No JSON-LD data found for {article_url}")
+                # print(f"No JSON-LD data found for {article_url}")
 
             return news
 
         except Exception as e:
             logger.error(f"Error processing article at {article_url}: {e}")
-#             print(f"Error processing article at {article_url}: {e}")
+            # print(f"Error processing article at {article_url}: {e}")
             return None
 
     def save_news(self, news_item):
@@ -112,10 +126,10 @@ class CoinTelegraphScraper:
             if item:
                 self.collection.insert_one(item)
                 logger.info(f"Saved to MongoDB: {item['title']}")
-#                 print(f"Saved to MongoDB: {item['title']}")
+                # print(f"Saved to MongoDB: {item['title']}")
         except Exception as e:
             logger.error(f"Error saving news item to MongoDB: {e}")
-#             print(f"Error saving news item to MongoDB: {e}")
+            # print(f"Error saving news item to MongoDB: {e}")
 
     def json_item_standard(self, news_item):
         try:
@@ -136,24 +150,28 @@ class CoinTelegraphScraper:
                 'Negative': 0,
                 'Neutral': 0,
                 'Positive': 0,
-                'author': news_item.get('author', 'cointelegraph')
+                'author': news_item.get('author', 'cointelegraph'),
+                'Total_Views': int(news_item.get('Total_Views')) if news_item.get('Total_Views') else 0,
+                'Total_Shares': int(news_item.get('Total_Shares')) if news_item.get('Total_Shares') else 0,
+                
+                 
                
             }
             return item
         except Exception as e:
             logger.error(f"Error standardizing news item: {e}")
-#             print(f"Error standardizing news item: {e}")
+            # print(f"Error standardizing news item: {e}")
             return None
 
     def start_scraping(self):
         try:
             logger.info("Starting scraping...")
-#             print("Starting scraping...")
+            # print("Starting scraping...")
             soup = self.get_soup(self.base_url)
             if soup:
                 articles = soup.find_all("article", class_="post-card__article")
                 logger.info(f"Number of articles found: {len(articles)}")
-#                 print(f"Number of articles found: {len(articles)}")
+                # print(f"Number of articles found: {len(articles)}")
                 for article in articles:
                     link = article.find("a")["href"]
                     article_url = link if link.startswith("http") else self.base_url + link
@@ -161,11 +179,10 @@ class CoinTelegraphScraper:
                     if news_item:
                         self.save_news(news_item)
             logger.info("Scraping completed.")
-#             print("Scraping completed.")
+            # print("Scraping completed.")
         except Exception as e:
             logger.error(f"Error during scraping: {e}")
-#             print(f"Error during scraping: {e}")
-
+            # print(f"Error during scraping: {e}")
 # i = 0 
 # if __name__ == "__main__":
 #     scraper = CoinTelegraphScraper(
@@ -174,11 +191,11 @@ class CoinTelegraphScraper:
 #         collection_name="cointelegraph"
 #     )
 
-    # while True:
-    #     
-    #     scraper.start_scraping()
-    #     i += 1
-    #     print(f'It has been {i} Times and it has been running {i/2} hours')
-    #     time.sleep(1800)  
-    #     if i == 10 :
-    #         break
+#     while True:
+      
+#         scraper.start_scraping()
+#         i += 1
+#         # print(f'It has been {i} Times and it has been running {i/2} hours')
+#         time.sleep(1800)  
+#         if i == 10 :
+#             break
